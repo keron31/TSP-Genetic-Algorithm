@@ -12,10 +12,12 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <DockPanel Grid.Row="0" LastChildFill="True" Margin="10">
             <Button DockPanel.Dock="Right" x:Name="btnAddCities" Content="Dodaj miasta" Click="AddCities_Click" Width="150" IsEnabled="False"/>
+            <Button DockPanel.Dock="Right" x:Name="btnRemoveAllCities" Content="Usuń wszystkie miasta" Click="RemoveAllCities_Click" Width="200" IsEnabled="False"/>
             <TextBox x:Name="txtCities" TextChanged="TxtCities_TextChanged" ScrollViewer.VerticalScrollBarVisibility="Auto" AcceptsReturn="True" Height="100" />
         </DockPanel>
 
@@ -36,6 +38,12 @@
         </ListView>
 
         <StackPanel Orientation="Horizontal" Grid.Row="2" Margin="10">
+            <Label Content="Wybierz algorytm do pracy:"/>
+            <RadioButton x:Name="radioSingleThreaded" GroupName="AlgorithmChoice" Content="Standardowy algorytm jednowątkowy" Checked="RadioSingleThreaded_Checked" Unchecked="RadioSingleThreaded_Unchecked" Margin="10,0,10,0"/>
+            <RadioButton x:Name="radioMultiThreaded" GroupName="AlgorithmChoice" Content="Algorytm z wykorzystaniem wielowątkowości" IsChecked="True" />
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="3" Margin="10">
             <Label Content="Liczba wątków:" />
             <TextBox x:Name="txtThreads" TextChanged="Parameters_TextChanged" Width="50" />
             <Label Content="Rozmiar populacji:" />
@@ -45,7 +53,7 @@
             <Button x:Name="btnStart" Content="Rozpocznij" Click="Start_Click" IsEnabled="False" />
         </StackPanel>
 
-        <TextBox x:Name="txtResults" Grid.Row="3" Margin="10" IsReadOnly="True" />
-        <ProgressBar x:Name="progressBar" Grid.Row="4" Margin="10" Height="20" Visibility="Hidden" />
+        <TextBox x:Name="txtResults" Grid.Row="4" Margin="10" IsReadOnly="True" />
+        <ProgressBar x:Name="progressBar" Grid.Row="5" Margin="10" Height="20" Visibility="Hidden" />
     </Grid>
 </Window>

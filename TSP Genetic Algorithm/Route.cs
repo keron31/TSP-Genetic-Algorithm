@@ -46,5 +46,4 @@ namespace TSP_Genetic_Algorithm
             return Routes.OrderBy(route => route.CalculateDistance()).First();
         }
     }
-
 }

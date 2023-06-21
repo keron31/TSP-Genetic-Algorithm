@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Diagnostics;
-using System.Threading.Tasks;
 
 namespace TSP_Genetic_Algorithm
 {
@@ -15,21 +16,48 @@ namespace TSP_Genetic_Algorithm
             InitializeComponent();
         }
 
+        private void RadioSingleThreaded_Checked(object sender, RoutedEventArgs e)
+        {
+            txtThreads.Clear();
+            txtThreads.IsEnabled = false;
+            Parameters_TextChanged(sender, null);
+        }
+
+        private void RadioSingleThreaded_Unchecked(object sender, RoutedEventArgs e)
+        {
+            txtThreads.IsEnabled = true;
+            Parameters_TextChanged(sender, null);
+        }
+
         private void TxtCities_TextChanged(object sender, TextChangedEventArgs e)
         {
             btnAddCities.IsEnabled = !string.IsNullOrWhiteSpace(txtCities.Text);
+            btnRemoveAllCities.IsEnabled = lstCities.Items.Count > 0;
+        }
+
+        private void RemoveAllCities_Click(object sender, RoutedEventArgs e)
+        {
+            lstCities.Items.Clear();
+            btnRemoveAllCities.IsEnabled = false;
         }
 
         private void Parameters_TextChanged(object sender, TextChangedEventArgs e)
         {
-            btnStart.IsEnabled = !string.IsNullOrWhiteSpace(txtThreads.Text) &&
+            if (radioSingleThreaded.IsChecked == true)
+            {
+                btnStart.IsEnabled = !string.IsNullOrWhiteSpace(txtPopulationSize.Text) &&
+                                 !string.IsNullOrWhiteSpace(txtMutationRate.Text);
+            } else
+            {
+                btnStart.IsEnabled = !string.IsNullOrWhiteSpace(txtThreads.Text) &&
                                  !string.IsNullOrWhiteSpace(txtPopulationSize.Text) &&
                                  !string.IsNullOrWhiteSpace(txtMutationRate.Text);
+            }
         }
-
 
         private void AddCities_Click(object sender, RoutedEventArgs e)
         {
+            CultureInfo cultureInfo = new CultureInfo("en-US");
             string[] lines = txtCities.Text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
             foreach (string line in lines)
             {
@@ -42,7 +70,7 @@ namespace TSP_Genetic_Algorithm
 
                 string name = parts[0];
                 double x, y;
-                if (!double.TryParse(parts[1], out x) || !double.TryParse(parts[2], out y))
+                if (!double.TryParse(parts[1].Replace(",", "."), NumberStyles.Any, cultureInfo, out x) || !double.TryParse(parts[2].Replace(",", "."), NumberStyles.Any, cultureInfo, out y))
                 {
                     txtResults.Text = "Szerokość i długość geograficzna musi być liczbą zmiennoprzecinkową.";
                     return;
@@ -59,10 +87,19 @@ namespace TSP_Genetic_Algorithm
         {
             txtResults.Clear();
             // Parse the user input
-            if (!int.TryParse(txtThreads.Text, out int numberOfThreads))
+            int numberOfThreads = 1;
+            if (radioSingleThreaded.IsChecked == false)
             {
-                txtResults.Text = "Liczba wątków musi być liczbą całkowitą.";
-                return;
+                if (!int.TryParse(txtThreads.Text, out numberOfThreads))
+                {
+                    txtResults.Text = "Liczba wątków musi być liczbą całkowitą.";
+                    return;
+                }
+                //if (numberOfThreads > Environment.ProcessorCount)
+                //{
+                //    txtResults.Text = $"Liczba wątków nie może przekraczać liczby dostępnych procesorów ({Environment.ProcessorCount}).";
+                //    return;
+                //}
             }
             if (!int.TryParse(txtPopulationSize.Text, out int populationSize))
             {
@@ -74,11 +111,12 @@ namespace TSP_Genetic_Algorithm
                 txtResults.Text = "Prawdopodobieństwo mutacji musi być liczbą zmiennoprzecinkową.";
                 return;
             }
-            if (numberOfThreads > Environment.ProcessorCount)
+            if(lstCities.Items.Count  < 2)
             {
-                txtResults.Text = $"Liczba wątków nie może przekraczać liczby dostępnych procesorów ({Environment.ProcessorCount}).";
+                txtResults.Text = "Dodaj więcej miast, minimalna liczba miast wynosi 2.";
                 return;
             }
+            
 
             // Create the initial population
             List<Route> initialRoutes = new List<Route>();
@@ -97,12 +135,25 @@ namespace TSP_Genetic_Algorithm
             progressBar.IsIndeterminate = true; // set the progress bar to indeterminate mode
 
             // Run the genetic algorithm
-            Route bestRoute = await ga.RunGeneticAlgorithmParallel(initialPopulation, 1000, 5, mutationRate, numberOfThreads);
+            Route bestRoute;
+            if (radioSingleThreaded.IsChecked == true)
+            {
+                bestRoute = await Task.Run(() => ga.RunGeneticAlgorithm(initialPopulation, 1000, 5, mutationRate));
+            } else
+            {
+                bestRoute = await ga.RunGeneticAlgorithmParallel(initialPopulation, 1000, 5, mutationRate, numberOfThreads);
+            }
 
-            stopwatch.Stop(); // stop timing
+            stopwatch.Stop();
+            progressBar.Visibility = Visibility.Hidden;
 
-            progressBar.Visibility = Visibility.Hidden; // hide the progress bar
+            // Znalezienie maxX oraz maxY w celu przeskalowania wykresu
+            double maxX = bestRoute.Cities.Max(c => c.Location.X);
+            double maxY = bestRoute.Cities.Max(c => c.Location.Y);
 
+            // Display the result
+            ResultWindow resultWindow = new ResultWindow(bestRoute, maxX, maxY);
+            resultWindow.Show();
             // Display the best route
             txtResults.Text = $"Najlepsza trasa: {bestRoute.CalculateDistance()} \nCzas wykonywania: {stopwatch.Elapsed.TotalSeconds} sekund";
         }

@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace TSP_Genetic_Algorithm
@@ -58,14 +59,13 @@ namespace TSP_Genetic_Algorithm
 
         public Population Evolve(Population population, int tournamentSize, double mutationRate)
         {
-            Population newPopulation = new Population();
+            Population newPopulation = new Population { Routes = new List<Route>() };
             for (int i = 0; i < population.Routes.Count; i++)
             {
                 Route parent1 = TournamentSelection(population, tournamentSize);
                 Route parent2 = TournamentSelection(population, tournamentSize);
                 Route child = OrderCrossover(parent1, parent2);
 
-                // Mutate the route
                 if (random.NextDouble() < mutationRate)
                 {
                     Mutate(child);
@@ -77,7 +77,7 @@ namespace TSP_Genetic_Algorithm
             return newPopulation;
         }
 
-        public void RunGeneticAlgorithm(Population initialPopulation, int generations, int tournamentSize, double mutationRate)
+        public Route RunGeneticAlgorithm(Population initialPopulation, int generations, int tournamentSize, double mutationRate)
         {
             Population population = initialPopulation;
 
@@ -86,53 +86,43 @@ namespace TSP_Genetic_Algorithm
                 population = Evolve(population, tournamentSize, mutationRate);
             }
 
-            Route bestRoute = population.BestRoute();
-            // Display or return the best route
+            return population.BestRoute();
         }
 
         public async Task<Route> RunGeneticAlgorithmParallel(Population initialPopulation, int generations, int tournamentSize, double mutationRate, int numberOfThreads)
         {
             Population population = initialPopulation;
-            BlockingCollection<Route> newPopulation = new BlockingCollection<Route>();
+            SemaphoreSlim semaphore = new SemaphoreSlim(numberOfThreads, numberOfThreads);
 
-            // This is the "master" task
-            var masterTask = Task.Run(async () =>
+            for (int i = 0; i < generations; i++)
             {
-                for (int i = 0; i < generations; i++)
+                List<Task<Route>> tasks = new List<Task<Route>>(numberOfThreads);
+
+                for (int j = 0; j < population.Routes.Count; j++)
                 {
-                    newPopulation = new BlockingCollection<Route>();
+                    await semaphore.WaitAsync();
 
-                    for (int j = 0; j < population.Routes.Count; j += numberOfThreads)
+                    Task<Route> task = Task.Run(() =>
                     {
-                        // Wait for the workers to generate the new individuals
-                        for (int k = 0; k < numberOfThreads && j + k < population.Routes.Count; k++)
+                        Route parent1 = TournamentSelection(population, tournamentSize);
+                        Route parent2 = TournamentSelection(population, tournamentSize);
+                        Route child = OrderCrossover(parent1, parent2);
+
+                        if (random.NextDouble() < mutationRate)
                         {
-                            newPopulation.Add(await Task.Run(() =>
-                            {
-                                Route parent1 = TournamentSelection(population, tournamentSize);
-                                Route parent2 = TournamentSelection(population, tournamentSize);
-                                Route child = OrderCrossover(parent1, parent2);
-
-                                // Mutate the route
-                                if (random.NextDouble() < mutationRate)
-                                {
-                                    Mutate(child);
-                                }
-
-                                return child;
-                            }));
+                            Mutate(child);
                         }
-                    }
 
-                    // Replace the old population with the new one
-                    population.Routes = new List<Route>(newPopulation);
+                        semaphore.Release();
+                        return child;
+                    });
+                    tasks.Add(task);
                 }
-            });
 
-            await masterTask;
+                Route[] newRoutes = await Task.WhenAll(tasks);
+                population.Routes = newRoutes.ToList();
+            }
             return population.BestRoute();
         }
-
     }
-
 }
