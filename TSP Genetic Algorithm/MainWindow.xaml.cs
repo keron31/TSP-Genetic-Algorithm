@@ -35,11 +35,6 @@ namespace TSP_Genetic_Algorithm
             btnRemoveAllCities.IsEnabled = lstCities.Items.Count > 0;
         }
 
-        private void RemoveAllCities_Click(object sender, RoutedEventArgs e)
-        {
-            lstCities.Items.Clear();
-            btnRemoveAllCities.IsEnabled = false;
-        }
 
         private void Parameters_TextChanged(object sender, TextChangedEventArgs e)
         {
@@ -80,7 +75,19 @@ namespace TSP_Genetic_Algorithm
                 lstCities.Items.Add(city);
             }
             txtCities.Clear();
+        }
 
+        private void RemoveCity_Click(object sender, RoutedEventArgs e)
+        {
+            var button = (Button)sender;
+            var city = (City)button.DataContext;
+            lstCities.Items.Remove(city);
+        }
+
+        private void RemoveAllCities_Click(object sender, RoutedEventArgs e)
+        {
+            lstCities.Items.Clear();
+            btnRemoveAllCities.IsEnabled = false;
         }
 
         private async void Start_Click(object sender, RoutedEventArgs e)
@@ -116,7 +123,6 @@ namespace TSP_Genetic_Algorithm
                 txtResults.Text = "Dodaj więcej miast, minimalna liczba miast wynosi 2.";
                 return;
             }
-            
 
             // Create the initial population
             List<Route> initialRoutes = new List<Route>();
@@ -129,10 +135,10 @@ namespace TSP_Genetic_Algorithm
             // Create the genetic algorithm
             GeneticAlgorithm ga = new GeneticAlgorithm();
 
-            Stopwatch stopwatch = Stopwatch.StartNew(); // start timing
+            Stopwatch stopwatch = Stopwatch.StartNew();
 
-            progressBar.Visibility = Visibility.Visible; // show the progress bar
-            progressBar.IsIndeterminate = true; // set the progress bar to indeterminate mode
+            progressBar.Visibility = Visibility.Visible; 
+            progressBar.IsIndeterminate = true;
 
             // Run the genetic algorithm
             Route bestRoute;
@@ -154,15 +160,9 @@ namespace TSP_Genetic_Algorithm
             // Display the result
             ResultWindow resultWindow = new ResultWindow(bestRoute, maxX, maxY);
             resultWindow.Show();
+
             // Display the best route
             txtResults.Text = $"Najlepsza trasa: {bestRoute.CalculateDistance()} \nCzas wykonywania: {stopwatch.Elapsed.TotalSeconds} sekund";
-        }
-
-        private void RemoveCity_Click(object sender, RoutedEventArgs e)
-        {
-            var button = (Button)sender;
-            var city = (City)button.DataContext;
-            lstCities.Items.Remove(city);
         }
     }
 }

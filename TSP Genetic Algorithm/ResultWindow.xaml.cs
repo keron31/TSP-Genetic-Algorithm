@@ -149,9 +149,5 @@ namespace TSP_Genetic_Algorithm
                 canvas.Children.Add(cityLabel);
             }
         }
-
-
     }
-
-
 }
